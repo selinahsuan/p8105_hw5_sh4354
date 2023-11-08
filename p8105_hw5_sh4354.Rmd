@@ -1,0 +1,10 @@
+---
+title: "Homework 5"
+author: "Selina Hsuan"
+date: "2023-11-08"
+output: github_document
+---
+
+
+## Problem 1
+
