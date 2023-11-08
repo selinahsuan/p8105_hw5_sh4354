@@ -8,3 +8,63 @@ output: github_document
 
 ## Problem 1
 
+```{r}
+library(tidyverse)
+```
+
+Download data 
+```{r}
+homicides_df = 
+  readr::read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv") |> 
+  janitor::clean_names() |> 
+  mutate(city_state = paste(city, state, sep = ", ")) |> 
+  select (-"city", -"state")
+```
+
+## Problem 2
+
+```{r}
+list_participant = 
+  list.files("data")
+```
+
+```{r}
+read_data = function(file) {
+  data = read_csv(paste0("data/", file))
+  return(data)
+}
+```
+
+```{r}
+participant_df = 
+  data.frame(file_name = list_participant) |> 
+  mutate (data = map(file_name, read_data)) |> 
+  unnest(data) |> 
+  separate(file_name, into = c("study_arm", "subject_id"), sep = "_") |> 
+  pivot_longer(week_1:week_8,
+    names_to = "week", 
+    values_to = "observation") |> 
+  group_by(study_arm, subject_id) |> 
+  mutate(subject_id = str_replace(subject_id, ".csv", ""),
+         week = str_replace(week, "week_", ""), 
+         study_arm = case_when(
+           study_arm == "con" ~ "control",
+           study_arm == "exp" ~ "experimental"
+         )) |> 
+  mutate(subject_id_numeric = as.numeric(subject_id)) |> 
+  mutate(subject_id_renumbered = case_when(
+           study_arm == "experimental" ~ subject_id_numeric + 10,
+           TRUE ~ subject_id_numeric))
+```
+
+```{r}
+participant_df |> 
+  ggplot(aes(x = week, y = observation, color = study_arm, group = subject_id_renumbered)) + 
+  geom_line() +
+  labs(title = "Study Results", 
+        x = "Week",
+        y = "Observation")
+```
+
+
+
