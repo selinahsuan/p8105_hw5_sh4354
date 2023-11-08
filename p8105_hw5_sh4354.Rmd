@@ -8,6 +8,10 @@ output: github_document
 
 ## Problem 1
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
+```
+
 ```{r}
 library(tidyverse)
 ```
@@ -44,7 +48,6 @@ participant_df =
   pivot_longer(week_1:week_8,
     names_to = "week", 
     values_to = "observation") |> 
-  group_by(study_arm, subject_id) |> 
   mutate(subject_id = str_replace(subject_id, ".csv", ""),
          week = str_replace(week, "week_", ""), 
          study_arm = case_when(
@@ -63,8 +66,12 @@ participant_df |>
   geom_line() +
   labs(title = "Study Results", 
         x = "Week",
-        y = "Observation")
+        y = "Observation", 
+       color = "Study Arm")
 ```
 
+The spaghetti plot shows that longitudinal observations from Week 1 to Week 8 have higher values overall in the experimental arm compared to the control arm. There appears to be an upward trend in observation values for the experimental arm, while observation values for the control arm fluctuate around the same range. 
+
+## Problem 3
 
 
