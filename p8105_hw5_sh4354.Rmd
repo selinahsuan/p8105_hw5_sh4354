@@ -1,7 +1,7 @@
 ---
 title: "Homework 5"
 author: "Selina Hsuan"
-date: "2023-11-08"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
 output: github_document
 ---
 
@@ -14,16 +14,72 @@ knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
 
 ```{r}
 library(tidyverse)
+library(p8105.datasets)
 ```
 
-Download data 
+Download and clean data 
 ```{r}
 homicides_df = 
-  readr::read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv") |> 
+  read_csv("data/homicide-data.csv", na = c("", "NA", "Unknown")) |> 
   janitor::clean_names() |> 
-  mutate(city_state = paste(city, state, sep = ", ")) |> 
-  select (-"city", -"state")
+  mutate(
+    city_state = str_c(city, state, sep = ", "),
+    resolution = case_when(
+      disposition == "Closed without arrest" ~ "unsolved",
+      disposition == "Open/No arrest"        ~ "unsolved",
+      disposition == "Closed by arrest"      ~ "solved"
+    )
+  ) |> 
+    filter(city_state != "Tulsa, AL") 
 ```
+
+
+Homicides solved by city_state
+```{r}
+city_homicide_df = 
+  homicides_df |> 
+  select(city_state, disposition, resolution) |> 
+  group_by(city_state) |> 
+  summarize(
+    hom_total = n(),
+    hom_unsolved = sum(resolution == "unsolved"))
+```
+
+Proportion of homicides unsolved in Baltimore, MD
+```{r}
+bmore_test = 
+  prop.test(
+    x = filter(city_homicide_df, city_state == "Baltimore, MD") |>  pull(hom_unsolved),
+    n = filter(city_homicide_df, city_state == "Baltimore, MD") |>  pull(hom_total)) 
+
+broom::tidy(bmore_test) |> 
+  knitr::kable(digits = 3)
+```
+
+Estimates and CI's for proportion of unsolved homicides in each city
+```{r}
+test_results = 
+  city_homicide_df |> 
+  mutate(
+    prop_tests = map2(hom_unsolved, hom_total, \(x, y) prop.test(x = x, n = y)),
+    tidy_tests = map(prop_tests, broom::tidy)) |> 
+    select(-prop_tests) |> 
+    unnest(tidy_tests) |> 
+    select(city_state, estimate, conf.low, conf.high) |> 
+    mutate(city_state = fct_reorder(city_state, estimate))
+```
+
+Create plot showing the estimate (and CI) of the proportion of unsolved homicides in each city
+```{r}
+test_results |> 
+  mutate(city_state = fct_reorder(city_state, estimate)) |> 
+  ggplot(aes(x = city_state, y = estimate)) + 
+  geom_point() + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
 
 ## Problem 2
 
