@@ -85,7 +85,7 @@ test_results |>
 
 ```{r}
 list_participant = 
-  list.files("data")
+  setdiff(list.files("data"), "homicide-data.csv")
 ```
 
 ```{r}
@@ -170,7 +170,7 @@ sim_results =
 ```{r}
 sim_result_df =
   expand_grid(
-    mu = c(1, 2, 3, 4, 5, 6),
+    mu = c(0, 1, 2, 3, 4, 5, 6),
     iter = 1:5000
   ) |> 
   mutate(estimate_df = map(mu, ~sim_mean_sd(mu=.x))) |> 
@@ -187,8 +187,14 @@ sim_result_df |>
   summarise(power = sum(conclusion == "reject null") / n()) |> 
   ggplot(aes(x = mu, y = power)) +
   geom_line() +
-  geom_point()
+  geom_point() + 
+  labs(
+    title = "Power Plot",
+    x = "True Value of μ",
+    y = "Power", 
+  ) 
 ```
+The plot shows that as the true value of mu increases, the power (or proportion of times the null was rejected) also increases. This makes sense because because as the true value of mu is gets farther away from 0, the null hypothesis of H:μ=0 is more and more likely to be rejected. In other words, a greater proportion of estimates from the random sample are significantly different from 0. According to the plot, when the true value of mu is 5 and 6, the null is rejected for all estimates. 
 
 Average mu plot
 ```{r}
@@ -197,7 +203,12 @@ sim_result_df |>
   summarise(mean_mu = mean(mu)) |> 
   ggplot(aes(x = mu, y = mean_mu)) +
   geom_line() +
-  geom_point()
+  geom_point() + 
+  labs(
+    title = "Average μ Plot",
+    x = "True value of μ",
+    y = "Average Estimate of μ̂"
+  ) 
 ```
 
 Average mu plot for samples where null rejected
@@ -208,9 +219,14 @@ sim_result_df |>
   summarise(mean_mu = mean(mu)) |> 
   ggplot(aes(x = mu, y = mean_mu)) +
   geom_line() +
-  geom_point()
+  geom_point() +
+  labs(
+    title = "Average μ Plot (Samples for which the null was rejected)",
+    x = "True value of μ",
+    y = "Average Estimate of μ̂"
+  ) 
 ```
 
-The sample average of μ̂ across tests for which the null is rejected is approximately equal to the true value of μ. This is because the sample is random, meaning it will result in approximately the same distribution as the true sample size. 
+The sample average of μ̂ across tests for which the null is rejected is approximately equal to the true value of μ. This is because the sample is random, meaning it will result in approximately the same distribution as the true sample mean. 
 
 
