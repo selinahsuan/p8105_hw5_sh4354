@@ -83,11 +83,14 @@ test_results |>
 
 ## Problem 2
 
+First, we create a dataframe containing all file names. 
 ```{r}
 list_participant = 
   setdiff(list.files("data"), "homicide-data.csv")
 ```
 
+
+Next, we iterate over file names and read in data for each subject. 
 ```{r}
 read_data = function(file) {
   data = read_csv(paste0("data/", file))
@@ -95,6 +98,8 @@ read_data = function(file) {
 }
 ```
 
+
+We save the results as a new variable in participant_df and tidy the results. 
 ```{r}
 participant_df = 
   data.frame(file_name = list_participant) |> 
@@ -109,78 +114,66 @@ participant_df =
          study_arm = case_when(
            study_arm == "con" ~ "control",
            study_arm == "exp" ~ "experimental"
-         )) |> 
-  mutate(subject_id_numeric = as.numeric(subject_id)) |> 
-  mutate(subject_id_renumbered = case_when(
-           study_arm == "experimental" ~ subject_id_numeric + 10,
-           TRUE ~ subject_id_numeric))
+         )) 
 ```
 
+
+Finally, we make a spaghetti plot. 
 ```{r}
 participant_df |> 
-  ggplot(aes(x = week, y = observation, color = study_arm, group = subject_id_renumbered)) + 
-  geom_line() +
+  ggplot(aes(x = week, y = observation, color = subject_id, group = subject_id)) + 
+  facet_grid(~study_arm) +
+  geom_line(aes(color = subject_id)) +
   labs(title = "Study Results", 
         x = "Week",
-        y = "Observation", 
-       color = "Study Arm")
+        y = "Observation") +
+  viridis::scale_color_viridis(discrete = TRUE)
 ```
 
 The spaghetti plot shows that longitudinal observations from Week 1 to Week 8 have higher values overall in the experimental arm compared to the control arm. There appears to be an upward trend in observation values for the experimental arm, while observation values for the control arm fluctuate around the same range. 
 
+
+
 ## Problem 3
 
-Set seed for reproducibility
+First, we set seed for reproducibility. 
 ```{r}
 set.seed(12345)
 ```
 
-Set up design elements
+Next, we set up the design elements. 
 ```{r}
-sim_mean_sd = function(n_obs=30, mu, sigma = 5) {
+sim_function = function(n_obs=30, mu, sigma = 5) {
   
-  x = rnorm(n = n_obs, mean = mu, sd = sigma)
+  data = tibble(
+    x = rnorm(n = n_obs, mean = mu, sd = sigma)
+  )
   
-  t_test_result = t.test(x, mu = 0)
-  
-  t_test_tidy = broom::tidy(t_test_result)
-  
-  tibble(
-    est = t_test_tidy |> pull(estimate), 
-    p_val = t_test_tidy |> pull(p.value)
-    )
+  output = data |> 
+    t.test(mu=0) |> 
+    broom::tidy() |>
+    select(estimate, p.value) |>
+    rename(est = estimate, p_val = p.value)
 }
 ```
 
-Generate 5000 datasets from model
-```{r}
-output = vector("list", length = 5000)
 
-for (i in 1:5000) {
-  
-  output[[i]] = sim_mean_sd(mu=0)
-  
-}
-
-sim_results = 
-  bind_rows(output)
-```
-
-
+Now, we generate 5000 datasets from the model for seven different values of mu. 
 ```{r}
 sim_result_df =
   expand_grid(
     mu = c(0, 1, 2, 3, 4, 5, 6),
     iter = 1:5000
   ) |> 
-  mutate(estimate_df = map(mu, ~sim_mean_sd(mu=.x))) |> 
+  mutate(estimate_df = map(mu, ~sim_function(mu=.x))) |> 
   unnest(estimate_df) |> 
   mutate (conclusion = case_when (
       p_val < 0.05 ~ "reject null",
       p_val >= 0.05 ~ "fail to reject null"))
 ```
 
-Power plot
+
+Using the generated data, we make a plot showing the proportion of times the null was rejected against the true value of mu. 
 ```{r}
 sim_result_df |> 
   group_by(mu) |> 
@@ -188,22 +181,25 @@ sim_result_df |>
   ggplot(aes(x = mu, y = power)) +
   geom_line() +
   geom_point() + 
+  scale_x_continuous(breaks = seq(0, 6, 1)) +
   labs(
     title = "Power Plot",
     x = "True Value of μ",
     y = "Power", 
   ) 
 ```
-The plot shows that as the true value of mu increases, the power (or proportion of times the null was rejected) also increases. This makes sense because because as the true value of mu is gets farther away from 0, the null hypothesis of H:μ=0 is more and more likely to be rejected. In other words, a greater proportion of estimates from the random sample are significantly different from 0. According to the plot, when the true value of mu is 5 and 6, the null is rejected for all estimates. 
+The plot shows that as the true value of mu increases, the power (or proportion of times the null was rejected) also increases. This makes sense because because as the true value of mu gets farther away from 0, the null hypothesis of H:μ=0 is more and more likely to be rejected. In other words, a greater proportion of estimates from the random sample are significantly different from 0. According to the plot, when the true value of mu is 5 and 6, the null is rejected for all estimates. 
 
-Average mu plot
+
+Now, we make a plot showing the average estimate of mu against the true value of mu. 
 ```{r}
 sim_result_df |> 
   group_by(mu) |> 
-  summarise(mean_mu = mean(mu)) |> 
+  summarise(mean_mu = mean(est)) |>
   ggplot(aes(x = mu, y = mean_mu)) +
   geom_line() +
-  geom_point() + 
+  geom_point() +
+  scale_x_continuous(breaks = seq(0, 6, 1)) +
   labs(
     title = "Average μ Plot",
     x = "True value of μ",
@@ -211,15 +207,17 @@ sim_result_df |>
   ) 
 ```
 
-Average mu plot for samples where null rejected
+
+We make a similar plot showing the average estimate of mu only in samples for which the null was rejected against the true value of mu.
 ```{r}
 sim_result_df |> 
   filter(conclusion == "reject null") |> 
   group_by(mu) |> 
-  summarise(mean_mu = mean(mu)) |> 
+  summarise(mean_mu = mean(est)) |> 
   ggplot(aes(x = mu, y = mean_mu)) +
   geom_line() +
   geom_point() +
+  scale_x_continuous(breaks = seq(0, 6, 1)) +
   labs(
     title = "Average μ Plot (Samples for which the null was rejected)",
     x = "True value of μ",
@@ -227,6 +225,6 @@ sim_result_df |>
   ) 
 ```
 
-The sample average of μ̂ across tests for which the null is rejected is approximately equal to the true value of μ. This is because the sample is random, meaning it will result in approximately the same distribution as the true sample mean. 
+Based on the two plots above, when the true value of mu is 0-4, the average estimate of mu across tests for which the null is rejected is greater than the true value of mu. When the true value of mu reaches 5 and 6, the average estimate of mu is equal to the true value of mu. The average estimate deviates the greatest from the true value when the true value equals 1. This is because the closer the true mu is to 0, the greater the proportion of estimates that will be deemed significantly similar to 0. Thus, the estimates that are not significant (null is rejected) will skew on the higher end of the distribution of estimates of the true mu. As the true mu increases, an increasingly smaller proportion of estimates are deemed significantly similar to 0. Thus, when the true mu reaches 5 and 6, the average estimate of mu is equal to the true value of mu. 
 
 
