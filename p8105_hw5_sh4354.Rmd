@@ -90,7 +90,7 @@ list_participant =
 ```
 
 
-Next, we iterate over file names and read in data for each subject. 
+Next, we create a function that reads the data in each file. 
 ```{r}
 read_data = function(file) {
   data = read_csv(paste0("data/", file))
@@ -98,8 +98,7 @@ read_data = function(file) {
 }
 ```
 
-
-We save the results as a new variable in participant_df and tidy the results. 
+We iterate over file names and read in data for each subject, saving the results as a new variable in participant_df. We also tidy the results. 
 ```{r}
 participant_df = 
   data.frame(file_name = list_participant) |> 
@@ -118,7 +117,7 @@ participant_df =
 ```
 
 
-Finally, we make a spaghetti plot. 
+Finally, we make a spaghetti plot of longitudinal observations for participants in each study arm. 
 ```{r}
 participant_df |> 
   ggplot(aes(x = week, y = observation, color = subject_id, group = subject_id)) + 
@@ -188,6 +187,7 @@ sim_result_df |>
     y = "Power", 
   ) 
 ```
+
 The plot shows that as the true value of mu increases, the power (or proportion of times the null was rejected) also increases. This makes sense because because as the true value of mu gets farther away from 0, the null hypothesis of H:μ=0 is more and more likely to be rejected. In other words, a greater proportion of estimates from the random sample are significantly different from 0. According to the plot, when the true value of mu is 5 and 6, the null is rejected for all estimates. 
 
 
@@ -225,6 +225,6 @@ sim_result_df |>
   ) 
 ```
 
-Based on the two plots above, when the true value of mu is 0-4, the average estimate of mu across tests for which the null is rejected is greater than the true value of mu. When the true value of mu reaches 5 and 6, the average estimate of mu is equal to the true value of mu. The average estimate deviates the greatest from the true value when the true value equals 1. This is because the closer the true mu is to 0, the greater the proportion of estimates that will be deemed significantly similar to 0. Thus, the estimates that are not significant (null is rejected) will skew on the higher end of the distribution of estimates of the true mu. As the true mu increases, an increasingly smaller proportion of estimates are deemed significantly similar to 0. Thus, when the true mu reaches 5 and 6, the average estimate of mu is equal to the true value of mu. 
+Based on the two plots above, between the true mu values of 0 and 4, the average estimate of mu across tests for which the null is rejected is greater than the true value of mu. When the true value of mu reaches 5 and 6, the average estimate of mu is equal to the true value of mu. The average estimate deviates the greatest from the true value when the true value equals 1. This is because the closer the true mu is to 0, the greater the proportion of estimates that will be deemed significantly similar to 0. Thus, the estimates that are not significant (null is rejected) will skew on the higher end of the distribution of estimates of the true mu. As the true mu increases, an increasingly smaller proportion of estimates are deemed significantly similar to 0. Thus, when the true mu reaches 5 and 6, the average estimate of mu is equal to the true value of mu. 
 
 
